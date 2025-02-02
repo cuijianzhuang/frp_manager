@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <title>FRP 管理面板</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <h1>FRP 管理面板</h1>
+        
+        <div class="status-panel">
+            <h2>服务状态</h2>
+            <pre id="status">加载中...</pre>
+            <button onclick="refreshStatus()">刷新状态</button>
+        </div>
+
+        <div class="config-panel">
+            <h2>配置管理</h2>
+            <form id="configForm">
+                <div class="form-group">
+                    <label>绑定端口:</label>
+                    <input type="number" id="bindPort" name="bind_port">
+                </div>
+                <div class="form-group">
+                    <label>面板端口:</label>
+                    <input type="number" id="dashboardPort" name="dashboard_port">
+                </div>
+                <div class="form-group">
+                    <label>面板用户名:</label>
+                    <input type="text" id="dashboardUser" name="dashboard_user">
+                </div>
+                <div class="form-group">
+                    <label>面板密码:</label>
+                    <input type="password" id="dashboardPwd" name="dashboard_pwd">
+                </div>
+                <div class="form-group">
+                    <label>认证令牌:</label>
+                    <input type="password" id="token" name="token">
+                </div>
+                <button type="submit">保存配置</button>
+            </form>
+        </div>
+
+        <div class="config-panel">
+            <h2>管理员设置</h2>
+            <form id="adminForm">
+                <div class="form-group">
+                    <label>新密码:</label>
+                    <input type="password" id="newPassword" name="newPassword" required>
+                </div>
+                <div class="form-group">
+                    <label>确认密码:</label>
+                    <input type="password" id="confirmPassword" name="confirmPassword" required>
+                </div>
+                <button type="submit">修改密码</button>
+            </form>
+        </div>
+    </div>
+    <script src="script.js"></script>
+</body>
+</html> 
