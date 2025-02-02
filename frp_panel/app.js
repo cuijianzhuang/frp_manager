@@ -75,19 +75,23 @@ app.post('/api/admin/password', (req, res) => {
         // 重新加载环境变量
         require('dotenv').config();
 
-        // 重启应用
-        process.on('exit', () => {
-            require('child_process').spawn(process.argv[0], process.argv.slice(1), {
-                detached: true,
-                stdio: ['ignore', 'ignore', 'ignore']
-            }).unref();
-        });
-        process.exit();
-        
+        // 先发送响应
         res.json({ 
             success: true, 
-            message: '密码已更新，服务正在重启' 
+            message: '密码已更新，服务即将重启' 
         });
+
+        // 延迟1秒后重启，确保响应已发送
+        setTimeout(() => {
+            process.on('exit', () => {
+                require('child_process').spawn(process.argv[0], process.argv.slice(1), {
+                    detached: true,
+                    stdio: ['ignore', 'ignore', 'ignore']
+                }).unref();
+            });
+            process.exit();
+        }, 1000);
+        
     } catch (error) {
         res.status(500).json({ 
             success: false, 

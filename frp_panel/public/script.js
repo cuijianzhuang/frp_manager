@@ -84,19 +84,18 @@ document.addEventListener('DOMContentLoaded', () => {
             
             const result = await response.json();
             if (result.success) {
-                alert('密码修改成功，服务正在重启，请等待几秒后刷新页面');
-                // 等待5秒后刷新页面
+                alert('密码修改成功！系统将在3秒后重启，请稍后使用新密码重新登录。');
+                // 清空表单
+                event.target.reset();
+                // 等待3秒后刷新页面
                 setTimeout(() => {
                     window.location.reload();
-                }, 5000);
+                }, 3000);
             } else {
                 alert(result.error || '密码修改失败');
             }
         } catch (error) {
-            alert('密码修改失败');
+            alert('密码修改失败，请稍后重试');
         }
-        
-        // 清空表单
-        event.target.reset();
     });
 }); 
