@@ -56,6 +56,17 @@
                 <button type="submit">修改密码</button>
             </form>
         </div>
+
+        <div class="config-panel">
+            <h2>配置文件编辑器</h2>
+            <div class="editor-container">
+                <textarea id="configEditor" spellcheck="false"></textarea>
+            </div>
+            <div class="editor-buttons">
+                <button onclick="loadRawConfig()">刷新配置</button>
+                <button onclick="saveRawConfig()">保存配置</button>
+            </div>
+        </div>
     </div>
     <script src="script.js"></script>
 </body>

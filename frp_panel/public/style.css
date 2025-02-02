@@ -86,4 +86,33 @@ pre {
 
 #adminForm button:hover {
     background-color: #1976D2;
+}
+
+/* 在现有样式后添加 */
+.editor-container {
+    margin: 10px 0;
+}
+
+#configEditor {
+    width: 100%;
+    height: 300px;
+    font-family: monospace;
+    padding: 10px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    background-color: #f8f8f8;
+    resize: vertical;
+    white-space: pre;
+    overflow-wrap: normal;
+    overflow-x: scroll;
+}
+
+.editor-buttons {
+    margin-top: 10px;
+    display: flex;
+    gap: 10px;
+}
+
+.editor-buttons button {
+    flex: 1;
 } 

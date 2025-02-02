@@ -20,46 +20,48 @@
 - root 权限
 - curl
 - wget
+- git
 - Node.js (Web面板需要)
 
 支持的架构：
 - x86_64 (amd64)
 - aarch64 (arm64)
 
-## 安装使用
+## 快速开始
 
 1. 下载脚本：
-
 ```bash
 git clone https://github.com/cuijianzhuang/frp_manager.git
+cd frp_manager
 ```
 
 2. 添加执行权限：
 ```bash
-cd frp_manager
-chmod +x frp_manager.frp_manager
+chmod +x frp_manager.sh
 ```
 
 3. 运行脚本：
-
 ```bash
-sudo ./frp_manager.frp_manager
+sudo ./frp_manager.sh
 ```
 
 ## 功能菜单
 
-1. 安装 FRP
-2. 配置 FRP
-3. 启动 FRP
-4. 停止 FRP
-5. 重启 FRP
-6. 查看状态
-7. 删除 FRP
-8. 设置开机自启动
-9. 关闭开机自启动
-10. 检查更新
-11. 更新 FRP
-12. 安装Web管理面板
+1. 安装 FRP - 安装FRP服务器
+2. 配置 FRP - 修改FRP配置文件
+3. 启动 FRP - 启动FRP服务
+4. 停止 FRP - 停止FRP服务
+5. 重启 FRP - 重启FRP服务
+6. 查看状态 - 查看FRP运行状态
+7. 删除 FRP - 完全删除FRP
+8. 设置开机自启动 - 设置FRP开机自动启动
+9. 关闭开机自启动 - 关闭FRP开机自动启动
+10. 检查FRP更新 - 检查FRP是否有新版本
+11. 更新FRP - 更新FRP到最新版本
+12. 安装Web管理面板 - 安装Web界面管理面板
+13. 检查面板更新 - 检查Web管理面板是否有更新
+14. 更新Web管理面板 - 更新Web管理面板到最新版本
+15. 删除Web管理面板 - 删除Web管理面板
 
 ## Web管理面板
 
@@ -70,34 +72,47 @@ sudo ./frp_manager.frp_manager
 - 📝 实时日志查看
 - 🔄 配置文件自动备份
 - ⚡ 即时配置生效
+- 🔑 安全的密码管理
 
 ### 安装说明
 
 1. 在主菜单中选择选项12安装Web管理面板
 2. 安装完成后会显示以下信息：
-   - 访问地址
+   - 访问地址（自动获取服务器IP）
    - 管理员用户名
-   - 随机生成的密码
+   - 随机生成的安全密码
 
 ### 访问方式
 
 - 默认端口：3000
 - 默认用户名：admin
-- 密码：安装时随机生成
+- 密码：安装时随机生成（请妥善保存）
 
-### 安全建议
+### 面板功能
 
-1. 妥善保管登录信息
-2. 建议使用反向代理并启用HTTPS
-3. 建议限制访问IP
-4. 定期更改访问密码
+1. FRP配置管理：
+   - 修改绑定端口
+   - 设置面板端口
+   - 配置认证信息
+   - 设置访问令牌
+
+2. 服务管理：
+   - 查看服务状态
+   - 实时查看日志
+   - 重启服务
+
+3. 安全设置：
+   - 修改管理员密码
+   - 密码强度验证
+   - 自动备份配置
 
 ## 配置说明
+
+### FRP配置
 
 默认配置文件位置：`/usr/local/frp/frps.ini`
 
 默认配置内容：
-
 ```ini
 [common]
 bind_port = 7000
@@ -107,70 +122,113 @@ dashboard_pwd = admin
 token = 12345678
 ```
 
-建议在正式使用前修改默认配置，特别是：
-- dashboard_user
-- dashboard_pwd
-- token
+### Web面板配置
+
+配置文件位置：`/usr/local/frp-panel/.env`
+```env
+ADMIN_USER=admin
+ADMIN_PASSWORD=<随机生成>
+PORT=3000
+```
 
 ## 目录结构
 
-- 安装目录：`/usr/local/frp`
-- 服务文件：`/etc/systemd/system/frps.service`
-- 配置文件：`/usr/local/frp/frps.ini`
+- FRP安装目录：`/usr/local/frp`
+- FRP服务文件：`/etc/systemd/system/frps.service`
+- FRP配置文件：`/usr/local/frp/frps.ini`
 - Web面板目录：`/usr/local/frp-panel`
 - Web面板配置：`/usr/local/frp-panel/.env`
 - Web面板服务：`/etc/systemd/system/frp-panel.service`
 
-## 更新记录
+## 更新说明
 
-- 支持自动检查和安装更新
-- 更新时自动备份配置文件
-- 保留原有配置
-- 添加Web管理面板支持
+### FRP更新
+1. 自动检查最新版本
+2. 备份现有配置
+3. 下载并安装新版本
+4. 恢复原有配置
+5. 自动重启服务
 
-## 注意事项
+### Web面板更新
+1. 从GitHub获取最新代码
+2. 备份现有配置和依赖
+3. 更新面板文件
+4. 恢复配置和依赖
+5. 自动重启所有服务
 
-1. 首次使用请确保以 root 权限运行
-2. 更新前建议备份重要数据
-3. 修改配置后需要重启服务生效
-4. 请及时修改默认密码和 token
-5. Web面板密码请妥善保管
+## 安全建议
+
+1. 首次安装后立即修改：
+   - FRP面板密码
+   - Web管理面板密码
+   - 认证令牌
+
+2. 访问安全：
+   - 使用强密码
+   - 定期更换密码
+   - 限制访问IP
+   - 建议使用反向代理并启用HTTPS
+
+3. 配置备份：
+   - 定期备份配置文件
+   - 保存好随机生成的密码
+   - 记录自定义的配置修改
 
 ## 故障排除
 
-1. 如果服务无法启动，请检查：
-   - 配置文件语法是否正确
-   - 端口是否被占用
-   - 系统防火墙设置
+1. FRP服务问题：
+   - 检查配置文件语法
+   - 确认端口未被占用
+   - 查看系统日志：`journalctl -u frps`
 
-2. 如果更新失败，请：
+2. Web面板问题：
+   - 检查Node.js安装
+   - 确认3000端口可用
+   - 查看面板日志：`journalctl -u frp-panel`
+
+3. 更新失败：
    - 检查网络连接
-   - 确认 GitHub API 访问是否正常
-   - 尝试手动下载更新
+   - 确认GitHub可访问
+   - 查看错误日志
 
-3. 如果Web面板无法访问，请检查：
-   - Node.js 是否正确安装
-   - 3000端口是否被占用
-   - 服务是否正常运行 (`systemctl status frp-panel`)
+## 卸载说明
 
-## 卸载
-
-使用脚本中的删除功能（选项 7）可以完全删除 FRP，包括：
-- 停止并禁用服务
-- 删除服务文件
-- 删除安装目录
-
-要删除Web面板：
+### 卸载FRP
 ```bash
+# 使用脚本菜单选项7
+# 或手动执行：
+systemctl stop frps
+systemctl disable frps
+rm -f /etc/systemd/system/frps.service
+rm -rf /usr/local/frp
+```
+
+### 卸载Web面板
+```bash
+# 使用脚本菜单选项15
+# 或手动执行：
 systemctl stop frp-panel
 systemctl disable frp-panel
 rm -f /etc/systemd/system/frp-panel.service
 rm -rf /usr/local/frp-panel
 ```
 
-## 贡献
+## 版本历史
 
-欢迎提交 Issue 和 Pull Request！
+### v1.0.0
+- 初始版本发布
+- 基本功能实现
+- Web管理面板支持
+
+## 贡献指南
+
+欢迎提交Issue和Pull Request！
+
+1. Fork本仓库
+2. 创建特性分支
+3. 提交更改
+4. 推送到分支
+5. 创建Pull Request
 
 ## 许可证
 

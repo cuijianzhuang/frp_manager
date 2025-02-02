@@ -160,6 +160,43 @@ app.get('/api/logs', (req, res) => {
     });
 });
 
+// 获取原始配置文件内容
+app.get('/api/config/raw', (req, res) => {
+    try {
+        const configContent = fs.readFileSync(CONFIG_PATH, 'utf-8');
+        res.json({ content: configContent });
+    } catch (error) {
+        res.status(500).json({ error: '读取配置失败' });
+    }
+});
+
+// 保存原始配置文件内容
+app.post('/api/config/raw', (req, res) => {
+    try {
+        const { content } = req.body;
+        
+        // 配置文件备份
+        const backupPath = `${CONFIG_PATH}.backup-${Date.now()}`;
+        fs.copyFileSync(CONFIG_PATH, backupPath);
+        
+        // 写入新配置
+        fs.writeFileSync(CONFIG_PATH, content);
+        
+        // 重启FRP服务
+        exec('systemctl restart frps', (error) => {
+            if (error) {
+                // 如果重启失败，恢复备份
+                fs.copyFileSync(backupPath, CONFIG_PATH);
+                res.status(500).json({ error: '重启服务失败，已恢复配置' });
+                return;
+            }
+            res.json({ message: '配置已更新并重启服务' });
+        });
+    } catch (error) {
+        res.status(500).json({ error: '更新配置失败' });
+    }
+});
+
 app.listen(port, () => {
     console.log(`FRP管理面板运行在 http://localhost:${port}`);
 }); 

@@ -55,6 +55,47 @@ async function refreshStatus() {
     }
 }
 
+// 加载原始配置文件内容
+async function loadRawConfig() {
+    try {
+        const response = await fetch('/api/config/raw');
+        const data = await response.json();
+        document.getElementById('configEditor').value = data.content;
+    } catch (error) {
+        alert('加载配置失败');
+    }
+}
+
+// 保存原始配置文件内容
+async function saveRawConfig() {
+    const content = document.getElementById('configEditor').value;
+    
+    if (!confirm('确定要保存更改并重启服务吗？')) {
+        return;
+    }
+    
+    try {
+        const response = await fetch('/api/config/raw', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ content })
+        });
+        
+        const result = await response.json();
+        if (response.ok) {
+            alert(result.message || '保存成功');
+            // 重新加载配置到表单
+            loadConfig();
+        } else {
+            alert(result.error || '保存失败');
+        }
+    } catch (error) {
+        alert('保存配置失败');
+    }
+}
+
 // 初始化
 document.addEventListener('DOMContentLoaded', () => {
     loadConfig();
@@ -98,4 +139,7 @@ document.addEventListener('DOMContentLoaded', () => {
             alert('密码修改失败，请稍后重试');
         }
     });
+
+    // 加载原始配置
+    loadRawConfig();
 }); 
