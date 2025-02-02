@@ -273,24 +273,72 @@ update_frp() {
     echo -e "${GREEN}FRP已更新到版本 ${latest_version}${NC}"
 }
 
+# 重启FRP和面板服务
+restart_all_services() {
+    echo -e "${GREEN}重启所有服务...${NC}"
+    
+    # 重启FRP服务
+    echo -e "${GREEN}1. 重启FRP服务...${NC}"
+    systemctl restart frps
+    if [ $? -ne 0 ]; then
+        echo -e "${RED}FRP服务重启失败${NC}"
+    else
+        echo -e "${GREEN}FRP服务已重启${NC}"
+    fi
+
+    # 重启Web面板服务
+    echo -e "${GREEN}2. 重启Web管理面板...${NC}"
+    systemctl restart frp-panel
+    if [ $? -ne 0 ]; then
+        echo -e "${RED}Web管理面板重启失败${NC}"
+    else
+        echo -e "${GREEN}Web管理面板已重启${NC}"
+    fi
+}
+
 # 安装管理面板依赖
 install_panel_deps() {
     check_root
 
+    # 检查是否已安装
+    if [ -d "/usr/local/frp-panel" ]; then
+        echo -e "${YELLOW}Web管理面板已安装。如需重新安装，请先删除现有安装。${NC}"
+        echo -e "${YELLOW}您可以使用选项13来检查更新。${NC}"
+        return 1
+    fi
+
     # 安装Node.js和npm
     if ! command -v node &> /dev/null; then
+        echo -e "${GREEN}正在安装Node.js...${NC}"
         curl -fsSL https://deb.nodesource.com/setup_lts.x | bash -
         apt-get install -y nodejs
     fi
 
     # 创建面板目录
+    echo -e "${GREEN}1. 创建面板目录...${NC}"
     mkdir -p /usr/local/frp-panel
-    cp -r frp_panel/* /usr/local/frp-panel/
+
+    # 克隆最新代码
+    echo -e "${GREEN}2. 下载面板文件...${NC}"
+    TMP_DIR=$(mktemp -d)
+    cd $TMP_DIR || exit
+
+    git clone --depth 1 https://github.com/cuijianzhuang/frp_manager.git
+    if [ $? -ne 0 ]; then
+        echo -e "${RED}下载面板文件失败${NC}"
+        rm -rf $TMP_DIR
+        return 1
+    fi
+
+    # 复制面板文件
+    cp -r frp_manager/frp_panel/* /usr/local/frp-panel/
+    rm -rf $TMP_DIR
 
     # 生成随机密码
     RANDOM_PASSWORD=$(openssl rand -base64 12)
 
     # 创建.env文件
+    echo -e "${GREEN}3. 创建配置文件...${NC}"
     cat > /usr/local/frp-panel/.env << EOF
 ADMIN_USER=admin
 ADMIN_PASSWORD=$RANDOM_PASSWORD
@@ -298,10 +346,12 @@ PORT=3000
 EOF
 
     # 安装依赖
+    echo -e "${GREEN}4. 安装依赖包...${NC}"
     cd /usr/local/frp-panel
     npm install
 
     # 创建服务文件
+    echo -e "${GREEN}5. 创建服务...${NC}"
     cat > /etc/systemd/system/frp-panel.service << EOF
 [Unit]
 Description=FRP Web Panel
@@ -321,13 +371,73 @@ EOF
 
     systemctl daemon-reload
     systemctl enable frp-panel
-    systemctl start frp-panel
 
-    echo -e "${GREEN}管理面板已安装并启动${NC}"
-    echo -e "${GREEN}访问地址: http://your-ip:3000${NC}"
+    # 重启所有服务
+    restart_all_services
+
+    echo -e "${GREEN}Web管理面板安装完成！${NC}"
+    echo -e "${GREEN}访问地址: http://your-ip::3000${NC}"
     echo -e "${GREEN}用户名: admin${NC}"
     echo -e "${GREEN}密码: $RANDOM_PASSWORD${NC}"
     echo -e "${YELLOW}请保存好以上登录信息！${NC}"
+}
+
+# 检查Web面板更新
+check_panel_update() {
+    if [ ! -d "/usr/local/frp-panel" ]; then
+        echo -e "${RED}错误: Web管理面板未安装${NC}"
+        return 1
+    fi
+
+    echo -e "${GREEN}正在从GitHub检查更新...${NC}"
+    
+    # 检查git是否安装
+    check_git
+    if [ $? -ne 0 ]; then
+        echo -e "${RED}请先安装git${NC}"
+        return 1
+    fi
+
+    # 创建临时目录
+    TMP_DIR=$(mktemp -d)
+    cd $TMP_DIR || exit
+
+    # 克隆最新代码（使用--depth 1只克隆最新版本以加快速度）
+    echo -e "${GREEN}克隆最新代码...${NC}"
+    git clone --depth 1 https://github.com/cuijianzhuang/frp_manager.git
+    if [ $? -ne 0 ]; then
+        echo -e "${RED}克隆代码失败，请检查网络连接${NC}"
+        rm -rf $TMP_DIR
+        return 1
+    fi
+
+    # 检查是否有更新
+    if [ -f "/usr/local/frp-panel/version.txt" ]; then
+        current_version=$(cat /usr/local/frp-panel/version.txt)
+    else
+        current_version="0.0.0"
+    fi
+
+    cd frp_manager || exit
+    new_version=$(git describe --tags --abbrev=0 2>/dev/null || echo "0.0.0")
+
+    if [ "$current_version" = "$new_version" ]; then
+        echo -e "${GREEN}当前已是最新版本 ${current_version}${NC}"
+        rm -rf $TMP_DIR
+        return 0
+    else
+        echo -e "${YELLOW}发现新版本: ${new_version}${NC}"
+        echo -e "当前版本: ${current_version}"
+        
+        # 复制新版本到临时目录
+        cp -r frp_panel $TMP_DIR/
+        cd ..
+        rm -rf frp_manager
+
+        # 返回新版本路径
+        echo "$TMP_DIR/frp_panel"
+        return 2
+    fi
 }
 
 # 更新Web管理面板
@@ -336,35 +446,182 @@ update_panel() {
 
     if [ ! -d "/usr/local/frp-panel" ]; then
         echo -e "${RED}错误: Web管理面板未安装${NC}"
+        echo -e "${YELLOW}请先使用选项12安装Web管理面板${NC}"
         return 1
     fi
 
-    echo -e "${GREEN}开始更新Web管理面板...${NC}"
+    echo -e "${GREEN}正在检查Web管理面板更新...${NC}"
+
+    # 检查更新
+    NEW_VERSION_PATH=$(check_panel_update)
+    UPDATE_STATUS=$?
+
+    if [ $UPDATE_STATUS -eq 0 ]; then
+        # 已是最新版本
+        return 0
+    elif [ $UPDATE_STATUS -eq 1 ]; then
+        # 检查更新失败
+        return 1
+    fi
 
     # 备份当前配置
+    echo -e "${GREEN}1. 备份当前配置...${NC}"
     if [ -f "/usr/local/frp-panel/.env" ]; then
         cp "/usr/local/frp-panel/.env" "/tmp/frp-panel.env.backup"
+        if [ $? -ne 0 ]; then
+            echo -e "${RED}备份配置文件失败${NC}"
+            return 1
+        fi
+        echo -e "${GREEN}配置文件已备份${NC}"
+    fi
+
+    # 备份node_modules
+    if [ -d "/usr/local/frp-panel/node_modules" ]; then
+        mv "/usr/local/frp-panel/node_modules" "/tmp/node_modules.backup"
     fi
 
     # 停止服务
+    echo -e "${GREEN}2. 停止Web管理面板服务...${NC}"
     systemctl stop frp-panel
+    if [ $? -ne 0 ]; then
+        echo -e "${YELLOW}警告: 停止服务失败，可能服务未运行${NC}"
+    else
+        echo -e "${GREEN}服务已停止${NC}"
+    fi
+
+    # 创建临时目录用于备份
+    TMP_BACKUP_DIR=$(mktemp -d)
+    cp -r /usr/local/frp-panel/* $TMP_BACKUP_DIR/
 
     # 更新面板文件
-    cp -r frp_panel/* /usr/local/frp-panel/
+    echo -e "${GREEN}3. 更新面板文件...${NC}"
+    if [ ! -d "$NEW_VERSION_PATH" ]; then
+        echo -e "${RED}错误: 未找到更新文件${NC}"
+        # 恢复备份
+        cp -r $TMP_BACKUP_DIR/* /usr/local/frp-panel/
+        rm -rf $TMP_BACKUP_DIR
+        systemctl start frp-panel
+        return 1
+    fi
+
+    # 更新文件（排除node_modules和.env）
+    rsync -av --exclude='node_modules' --exclude='.env' $NEW_VERSION_PATH/ /usr/local/frp-panel/
+    if [ $? -ne 0 ]; then
+        echo -e "${RED}更新文件失败${NC}"
+        # 恢复备份
+        cp -r $TMP_BACKUP_DIR/* /usr/local/frp-panel/
+        rm -rf $TMP_BACKUP_DIR
+        systemctl start frp-panel
+        return 1
+    fi
+    echo -e "${GREEN}面板文件已更新${NC}"
+
+    # 恢复node_modules
+    if [ -d "/tmp/node_modules.backup" ]; then
+        mv "/tmp/node_modules.backup" "/usr/local/frp-panel/node_modules"
+    fi
 
     # 恢复配置
+    echo -e "${GREEN}4. 恢复配置文件...${NC}"
     if [ -f "/tmp/frp-panel.env.backup" ]; then
         mv "/tmp/frp-panel.env.backup" "/usr/local/frp-panel/.env"
+        if [ $? -ne 0 ]; then
+            echo -e "${RED}恢复配置文件失败${NC}"
+            # 恢复备份
+            cp -r $TMP_BACKUP_DIR/* /usr/local/frp-panel/
+            rm -rf $TMP_BACKUP_DIR
+            systemctl start frp-panel
+            return 1
+        fi
+        echo -e "${GREEN}配置文件已恢复${NC}"
     fi
 
     # 更新依赖
+    echo -e "${GREEN}5. 检查依赖更新...${NC}"
     cd /usr/local/frp-panel
     npm install
+    if [ $? -ne 0 ]; then
+        echo -e "${RED}更新依赖失败${NC}"
+        # 恢复备份
+        cp -r $TMP_BACKUP_DIR/* /usr/local/frp-panel/
+        rm -rf $TMP_BACKUP_DIR
+        systemctl start frp-panel
+        return 1
+    fi
+    echo -e "${GREEN}依赖包已更新${NC}"
 
-    # 重启服务
-    systemctl restart frp-panel
+    # 清理临时文件
+    rm -rf $TMP_BACKUP_DIR
+    rm -rf $(dirname $NEW_VERSION_PATH)
 
-    echo -e "${GREEN}Web管理面板更新完成${NC}"
+    # 重启所有服务
+    restart_all_services
+
+    echo -e "${GREEN}Web管理面板更新完成！${NC}"
+    echo -e "${GREEN}请使用浏览器访问管理面板检查是否正常运行${NC}"
+    echo -e "${YELLOW}如果出现问题，您的原始文件已备份在 $TMP_BACKUP_DIR${NC}"
+}
+
+# 检查git是否安装
+check_git() {
+    if ! command -v git &> /dev/null; then
+        echo -e "${YELLOW}正在安装git...${NC}"
+        if command -v apt &> /dev/null; then
+            apt update && apt install -y git
+        elif command -v yum &> /dev/null; then
+            yum install -y git
+        else
+            echo -e "${RED}无法安装git，请手动安装${NC}"
+            return 1
+        fi
+    fi
+    return 0
+}
+
+# 删除Web管理面板
+remove_panel() {
+    check_root
+
+    if [ ! -d "/usr/local/frp-panel" ]; then
+        echo -e "${RED}错误: Web管理面板未安装${NC}"
+        return 1
+    fi
+
+    echo -e "${YELLOW}警告: 此操作将完全删除Web管理面板及其所有数据${NC}"
+    read -p "是否继续？(y/n): " confirm
+    if [ "$confirm" != "y" ]; then
+        echo -e "${GREEN}操作已取消${NC}"
+        return 0
+    fi
+
+    echo -e "${GREEN}开始删除Web管理面板...${NC}"
+
+    # 停止服务
+    echo -e "${GREEN}1. 停止Web管理面板服务...${NC}"
+    systemctl stop frp-panel
+    systemctl disable frp-panel
+    
+    # 删除服务文件
+    echo -e "${GREEN}2. 删除服务文件...${NC}"
+    rm -f /etc/systemd/system/frp-panel.service
+    systemctl daemon-reload
+
+    # 备份配置文件
+    if [ -f "/usr/local/frp-panel/.env" ]; then
+        echo -e "${GREEN}3. 备份配置文件到 /root/frp-panel-backup/...${NC}"
+        mkdir -p /root/frp-panel-backup
+        cp "/usr/local/frp-panel/.env" "/root/frp-panel-backup/.env.backup-$(date +%Y%m%d%H%M%S)"
+        echo -e "${GREEN}配置文件已备份到 /root/frp-panel-backup/.env.backup-$(date +%Y%m%d%H%M%S)${NC}"
+    fi
+
+    # 删除面板目录
+    echo -e "${GREEN}4. 删除面板文件...${NC}"
+    rm -rf /usr/local/frp-panel
+
+    echo -e "${GREEN}Web管理面板已完全删除！${NC}"
+    if [ -d "/root/frp-panel-backup" ]; then
+        echo -e "${YELLOW}配置文件备份保存在 /root/frp-panel-backup/${NC}"
+    fi
 }
 
 # 主菜单
@@ -382,10 +639,12 @@ show_menu() {
     echo "7. 删除 FRP"
     echo "8. 设置开机自启动"
     echo "9. 关闭开机自启动"
-    echo "10. 检查更新"
-    echo "11. 更新 FRP"
+    echo "10. 检查FRP更新"
+    echo "11. 更新FRP"
     echo "12. 安装Web管理面板"
-    echo "13. 更新Web管理面板"
+    echo "13. 检查面板更新"
+    echo "14. 更新Web管理面板"
+    echo "15. 删除Web管理面板"
     echo "0. 退出"
     echo "============================"
 }
@@ -394,7 +653,7 @@ show_menu() {
 main() {
     while true; do
         show_menu
-        read -p "请输入选项 [0-13]: " choice
+        read -p "请输入选项 [0-15]: " choice
 
         case $choice in
             1) install_frp ;;
@@ -409,7 +668,9 @@ main() {
             10) check_update ;;
             11) update_frp ;;
             12) install_panel_deps ;;
-            13) update_panel ;;
+            13) check_panel_update ;;
+            14) update_panel ;;
+            15) remove_panel ;;
             0) exit 0 ;;
             *) echo -e "${RED}无效的选项${NC}" ;;
         esac
