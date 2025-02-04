@@ -188,8 +188,10 @@ get_latest_version() {
     echo "${latest_version#v}"  # 移除版本号前的 'v' 字符
 }
 
-# 检查更新
-check_update() {
+# 检查并更新FRP
+check_and_update_frp() {
+    check_root
+
     if [ ! -d "$INSTALL_DIR" ]; then
         echo -e "${RED}错误: FRP未安装${NC}"
         return 1
@@ -207,70 +209,57 @@ check_update() {
     else
         echo -e "${YELLOW}发现新版本: ${latest_version}${NC}"
         echo -e "当前版本: ${FRP_VERSION}"
-        return 2
+        
+        read -p "是否现在更新？(y/n): " confirm
+        if [ "$confirm" = "y" ]; then
+            echo -e "${GREEN}开始更新FRP...${NC}"
+
+            # 备份配置文件
+            if [ -f "$INSTALL_DIR/frps.ini" ]; then
+                cp "$INSTALL_DIR/frps.ini" "/tmp/frps.ini.backup"
+            fi
+
+            # 停止服务
+            systemctl stop frps
+
+            # 下载新版本
+            TMP_DIR=$(mktemp -d)
+            cd $TMP_DIR
+
+            FRP_DOWNLOAD_URL="https://github.com/fatedier/frp/releases/download/v${latest_version}/frp_${latest_version}_linux_${ARCH}.tar.gz"
+            wget $FRP_DOWNLOAD_URL -O frp.tar.gz
+            if [ $? -ne 0 ]; then
+                echo -e "${RED}下载新版本失败${NC}"
+                rm -rf $TMP_DIR
+                return 1
+            fi
+
+            tar xzf frp.tar.gz
+
+            # 更新文件
+            cd frp_${latest_version}_linux_${ARCH}
+            cp -r * $INSTALL_DIR/
+
+            # 恢复配置文件
+            if [ -f "/tmp/frps.ini.backup" ]; then
+                mv "/tmp/frps.ini.backup" "$INSTALL_DIR/frps.ini"
+            fi
+
+            # 清理临时文件
+            cd
+            rm -rf $TMP_DIR
+
+            # 更新版本号变量
+            FRP_VERSION=$latest_version
+
+            # 重启服务
+            systemctl start frps
+
+            echo -e "${GREEN}FRP已更新到版本 ${latest_version}${NC}"
+        else
+            echo -e "${YELLOW}已取消更新${NC}"
+        fi
     fi
-}
-
-# 更新FRP
-update_frp() {
-    check_root
-
-    local latest_version
-    latest_version=$(get_latest_version)
-    if [ $? -ne 0 ]; then
-        return 1
-    fi
-
-    # 检查是否需要更新
-    if [ "$FRP_VERSION" = "$latest_version" ]; then
-        echo -e "${GREEN}当前已是最新版本 ${FRP_VERSION}${NC}"
-        return 0
-    fi
-
-    echo -e "${GREEN}开始更新FRP...${NC}"
-
-    # 备份配置文件
-    if [ -f "$INSTALL_DIR/frps.ini" ]; then
-        cp "$INSTALL_DIR/frps.ini" "/tmp/frps.ini.backup"
-    fi
-
-    # 停止服务
-    systemctl stop frps
-
-    # 下载新版本
-    TMP_DIR=$(mktemp -d)
-    cd $TMP_DIR
-
-    FRP_DOWNLOAD_URL="https://github.com/fatedier/frp/releases/download/v${latest_version}/frp_${latest_version}_linux_${ARCH}.tar.gz"
-    wget $FRP_DOWNLOAD_URL -O frp.tar.gz
-    if [ $? -ne 0 ]; then
-        echo -e "${RED}下载新版本失败${NC}"
-        rm -rf $TMP_DIR
-        return 1
-    fi
-
-    tar xzf frp.tar.gz
-
-    # 更新文件
-    cd frp_${latest_version}_linux_${ARCH}
-    cp -r * $INSTALL_DIR/
-
-    # 恢复配置文件
-    if [ -f "/tmp/frps.ini.backup" ]; then
-        mv "/tmp/frps.ini.backup" "$INSTALL_DIR/frps.ini"
-    fi
-
-    # 清理临时文件
-    cd
-    rm -rf $TMP_DIR
-
-    # 更新版本号变量
-    FRP_VERSION=$latest_version
-
-    # 重启服务
-    systemctl start frps
-
-    echo -e "${GREEN}FRP已更新到版本 ${latest_version}${NC}"
 }
 
 # 重启FRP和面板服务
@@ -539,11 +528,10 @@ show_menu() {
     echo "7. 删除 FRP"
     echo "8. 设置开机自启动"
     echo "9. 关闭开机自启动"
-    echo "10. 检查FRP更新"
-    echo "11. 更新FRP"
-    echo "12. 安装Web管理面板"
-    echo "13. 删除Web管理面板"
-    echo "14. 检查并更新Web面板"
+    echo "10. 检查并更新FRP"
+    echo "11. 安装Web管理面板"
+    echo "12. 删除Web管理面板"
+    echo "13. 检查并更新Web面板"
     echo "0. 退出"
     echo "============================"
 }
@@ -552,7 +540,7 @@ show_menu() {
 main() {
     while true; do
         show_menu
-        read -p "请输入选项 [0-14]: " choice
+        read -p "请输入选项 [0-13]: " choice
 
         case $choice in
             1) install_frp ;;
@@ -564,11 +552,10 @@ main() {
             7) remove_frp ;;
             8) enable_autostart ;;
             9) disable_autostart ;;
-            10) check_update ;;
-            11) update_frp ;;
-            12) install_panel_deps ;;
-            13) remove_panel ;;
-            14) check_and_update_panel ;;
+            10) check_and_update_frp ;;
+            11) install_panel_deps ;;
+            12) remove_panel ;;
+            13) check_and_update_panel ;;
             0) exit 0 ;;
             *) echo -e "${RED}无效的选项${NC}" ;;
         esac
