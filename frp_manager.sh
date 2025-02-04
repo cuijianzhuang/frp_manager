@@ -348,7 +348,13 @@ EOF
     # 安装依赖
     echo -e "${GREEN}4. 安装依赖包...${NC}"
     cd /usr/local/frp-panel
-    npm install
+    npm install --production
+    
+    # 确保Chart.js正确安装
+    if [ ! -f "node_modules/chart.js/dist/chart.umd.js" ]; then
+        echo -e "${GREEN}安装Chart.js...${NC}"
+        npm install chart.js@latest
+    fi
 
     # 创建服务文件
     echo -e "${GREEN}5. 创建服务...${NC}"
@@ -444,6 +450,103 @@ remove_panel() {
     fi
 }
 
+# 检查Web面板更新
+check_panel_update() {
+    check_root
+    
+    if [ ! -d "/usr/local/frp-panel" ]; then
+        echo -e "${RED}错误: Web面板未安装${NC}"
+        return 1
+    }
+
+    echo -e "${GREEN}正在检查Web面板更新...${NC}"
+    
+    # 创建临时目录
+    TMP_DIR=$(mktemp -d)
+    cd $TMP_DIR
+
+    # 克隆最新代码
+    git clone --depth 1 https://github.com/cuijianzhuang/frp_manager.git
+    if [ $? -ne 0 ]; then
+        echo -e "${RED}检查更新失败${NC}"
+        rm -rf $TMP_DIR
+        return 1
+    }
+
+    # 比较版本
+    CURRENT_VERSION=$(cat /usr/local/frp-panel/version.txt 2>/dev/null || echo "0.0.0")
+    NEW_VERSION=$(cat frp_manager/frp_panel/version.txt 2>/dev/null || echo "0.0.0")
+
+    if [ "$CURRENT_VERSION" = "$NEW_VERSION" ]; then
+        echo -e "${GREEN}当前已是最新版本 ${CURRENT_VERSION}${NC}"
+        rm -rf $TMP_DIR
+        return 0
+    else
+        echo -e "${YELLOW}发现新版本: ${NEW_VERSION}${NC}"
+        echo -e "当前版本: ${CURRENT_VERSION}"
+        rm -rf $TMP_DIR
+        return 2
+    fi
+}
+
+# 更新Web面板
+update_panel() {
+    check_root
+
+    if [ ! -d "/usr/local/frp-panel" ]; then
+        echo -e "${RED}错误: Web面板未安装${NC}"
+        return 1
+    }
+
+    echo -e "${GREEN}开始更新Web面板...${NC}"
+
+    # 创建临时目录
+    TMP_DIR=$(mktemp -d)
+    cd $TMP_DIR
+
+    # 克隆最新代码
+    git clone --depth 1 https://github.com/cuijianzhuang/frp_manager.git
+    if [ $? -ne 0 ]; then
+        echo -e "${RED}下载更新失败${NC}"
+        rm -rf $TMP_DIR
+        return 1
+    }
+
+    # 备份当前配置
+    if [ -f "/usr/local/frp-panel/.env" ]; then
+        cp "/usr/local/frp-panel/.env" "/tmp/frp-panel.env.backup"
+    fi
+
+    # 停止服务
+    systemctl stop frp-panel
+
+    # 更新文件
+    cp -r frp_manager/frp_panel/* /usr/local/frp-panel/
+
+    # 恢复配置文件
+    if [ -f "/tmp/frp-panel.env.backup" ]; then
+        mv "/tmp/frp-panel.env.backup" "/usr/local/frp-panel/.env"
+    fi
+
+    # 更新依赖
+    cd /usr/local/frp-panel
+    npm install --production
+
+    # 确保Chart.js正确安装
+    if [ ! -f "node_modules/chart.js/dist/chart.umd.js" ]; then
+        echo -e "${GREEN}安装Chart.js...${NC}"
+        npm install chart.js@latest
+    fi
+
+    # 清理临时文件
+    rm -rf $TMP_DIR
+
+    # 重启服务
+    systemctl restart frp-panel
+
+    echo -e "${GREEN}Web面板更新完成！${NC}"
+}
+
 # 主菜单
 show_menu() {
     clear
@@ -463,6 +566,8 @@ show_menu() {
     echo "11. 更新FRP"
     echo "12. 安装Web管理面板"
     echo "13. 删除Web管理面板"
+    echo "14. 检查面板更新"
+    echo "15. 更新Web面板"
     echo "0. 退出"
     echo "============================"
 }
@@ -487,6 +592,8 @@ main() {
             11) update_frp ;;
             12) install_panel_deps ;;
             13) remove_panel ;;
+            14) check_panel_update ;;
+            15) update_panel ;;
             0) exit 0 ;;
             *) echo -e "${RED}无效的选项${NC}" ;;
         esac

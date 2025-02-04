@@ -96,6 +96,67 @@ async function saveRawConfig() {
     }
 }
 
+// 初始化图表
+let trafficChart;
+function initTrafficChart() {
+    const ctx = document.getElementById('trafficChart').getContext('2d');
+    trafficChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: Array(30).fill(''),
+            datasets: [{
+                label: '入站流量',
+                data: Array(30).fill(0),
+                borderColor: '#2196F3',
+                tension: 0.4,
+                fill: false
+            }, {
+                label: '出站流量',
+                data: Array(30).fill(0),
+                borderColor: '#4CAF50',
+                tension: 0.4,
+                fill: false
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    title: {
+                        display: true,
+                        text: '流量 (KB/s)'
+                    }
+                }
+            }
+        }
+    });
+}
+
+// 更新监控数据
+async function updateMonitoring() {
+    try {
+        const response = await fetch('/api/monitoring');
+        const data = await response.json();
+        
+        // 更新指标卡片
+        document.getElementById('cpuUsage').textContent = `${data.cpu}%`;
+        document.getElementById('memoryUsage').textContent = `${data.memory}%`;
+        document.getElementById('connections').textContent = data.connections;
+        document.getElementById('networkTraffic').textContent = `${data.currentTraffic} KB/s`;
+        
+        // 更新图表
+        trafficChart.data.datasets[0].data.shift();
+        trafficChart.data.datasets[0].data.push(data.inbound);
+        trafficChart.data.datasets[1].data.shift();
+        trafficChart.data.datasets[1].data.push(data.outbound);
+        trafficChart.update();
+    } catch (error) {
+        console.error('获取监控数据失败:', error);
+    }
+}
+
 // 初始化
 document.addEventListener('DOMContentLoaded', () => {
     loadConfig();
@@ -142,4 +203,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // 加载原始配置
     loadRawConfig();
+
+    // 初始化监控图表
+    initTrafficChart();
+    
+    // 定期更新监控数据
+    updateMonitoring();
+    setInterval(updateMonitoring, 2000);
 }); 

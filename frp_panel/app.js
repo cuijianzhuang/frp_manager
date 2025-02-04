@@ -6,6 +6,7 @@ const { exec } = require('child_process');
 const path = require('path');
 const basicAuth = require('express-basic-auth');
 const crypto = require('crypto');
+const os = require('os');
 require('dotenv').config();
 
 const app = express();
@@ -196,6 +197,82 @@ app.post('/api/config/raw', (req, res) => {
         res.status(500).json({ error: '更新配置失败' });
     }
 });
+
+// 监控API
+app.get('/api/monitoring', async (req, res) => {
+    try {
+        // 获取CPU使用率
+        const cpuUsage = await getCPUUsage();
+        
+        // 获取内存使用率
+        const totalMem = os.totalmem();
+        const freeMem = os.freemem();
+        const memoryUsage = ((totalMem - freeMem) / totalMem * 100).toFixed(1);
+        
+        // 获取FRP连接数和流量
+        const frpStats = await getFRPStats();
+        
+        res.json({
+            cpu: cpuUsage,
+            memory: memoryUsage,
+            connections: frpStats.connections,
+            currentTraffic: frpStats.currentTraffic,
+            inbound: frpStats.inbound,
+            outbound: frpStats.outbound
+        });
+    } catch (error) {
+        console.error('获取监控数据失败:', error);
+        res.status(500).json({ error: '获取监控数据失败' });
+    }
+});
+
+// 获取CPU使用率
+async function getCPUUsage() {
+    return new Promise((resolve) => {
+        const startMeasure = cpuAverage();
+        
+        setTimeout(() => {
+            const endMeasure = cpuAverage();
+            const idleDifference = endMeasure.idle - startMeasure.idle;
+            const totalDifference = endMeasure.total - startMeasure.total;
+            const percentageCPU = 100 - Math.floor(100 * idleDifference / totalDifference);
+            resolve(percentageCPU);
+        }, 100);
+    });
+}
+
+function cpuAverage() {
+    const cpus = os.cpus();
+    let idleMs = 0;
+    let totalMs = 0;
+
+    cpus.forEach((cpu) => {
+        for (const type in cpu.times) {
+            totalMs += cpu.times[type];
+        }
+        idleMs += cpu.times.idle;
+    });
+
+    return {
+        idle: idleMs / cpus.length,
+        total: totalMs / cpus.length
+    };
+}
+
+// 获取FRP统计信息
+async function getFRPStats() {
+    return new Promise((resolve) => {
+        // 这里需要根据实际情况实现获取FRP统计信息的逻辑
+        // 可以通过读取FRP的API或日志来获取
+        // 这里暂时返回模拟数据
+        resolve({
+            connections: Math.floor(Math.random() * 100),
+            currentTraffic: Math.floor(Math.random() * 1000),
+            inbound: Math.floor(Math.random() * 500),
+            outbound: Math.floor(Math.random() * 500)
+        });
+    });
+}
 
 app.listen(port, () => {
     console.log(`FRP管理面板运行在 http://localhost:${port}`);

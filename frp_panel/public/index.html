@@ -9,6 +9,31 @@
     <div class="container">
         <h1>FRP 管理面板</h1>
         
+        <div class="monitoring-panel">
+            <h2>系统监控</h2>
+            <div class="monitoring-grid">
+                <div class="metric-card">
+                    <h3>CPU使用率</h3>
+                    <div id="cpuUsage">0%</div>
+                </div>
+                <div class="metric-card">
+                    <h3>内存使用率</h3>
+                    <div id="memoryUsage">0%</div>
+                </div>
+                <div class="metric-card">
+                    <h3>连接数</h3>
+                    <div id="connections">0</div>
+                </div>
+                <div class="metric-card">
+                    <h3>网络流量</h3>
+                    <div id="networkTraffic">0 KB/s</div>
+                </div>
+            </div>
+            <div class="monitoring-chart">
+                <canvas id="trafficChart"></canvas>
+            </div>
+        </div>
+
         <div class="status-panel">
             <h2>服务状态</h2>
             <pre id="status">加载中...</pre>
@@ -68,6 +93,15 @@
             </div>
         </div>
     </div>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+        // 如果CDN加载失败，使用本地版本
+        if (typeof Chart === 'undefined') {
+            const script = document.createElement('script');
+            script.src = '/node_modules/chart.js/dist/chart.umd.js';
+            document.head.appendChild(script);
+        }
+    </script>
     <script src="script.js"></script>
 </body>
 </html> 

@@ -8,6 +8,7 @@
     "body-parser": "^1.19.0",
     "ini": "^2.0.0",
     "express-basic-auth": "^1.2.1",
-    "dotenv": "^16.0.3"
+    "dotenv": "^16.0.3",
+    "chart.js": "^4.4.1"
   }
 } 
