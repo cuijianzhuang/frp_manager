@@ -457,7 +457,7 @@ check_panel_update() {
     if [ ! -d "/usr/local/frp-panel" ]; then
         echo -e "${RED}错误: Web面板未安装${NC}"
         return 1
-    }
+    fi
 
     echo -e "${GREEN}正在检查Web面板更新...${NC}"
     
@@ -471,7 +471,7 @@ check_panel_update() {
         echo -e "${RED}检查更新失败${NC}"
         rm -rf $TMP_DIR
         return 1
-    }
+    fi
 
     # 比较版本
     CURRENT_VERSION=$(cat /usr/local/frp-panel/version.txt 2>/dev/null || echo "0.0.0")
@@ -496,7 +496,7 @@ update_panel() {
     if [ ! -d "/usr/local/frp-panel" ]; then
         echo -e "${RED}错误: Web面板未安装${NC}"
         return 1
-    }
+    fi
 
     echo -e "${GREEN}开始更新Web面板...${NC}"
 
@@ -510,7 +510,7 @@ update_panel() {
         echo -e "${RED}下载更新失败${NC}"
         rm -rf $TMP_DIR
         return 1
-    }
+    fi
 
     # 备份当前配置
     if [ -f "/usr/local/frp-panel/.env" ]; then
