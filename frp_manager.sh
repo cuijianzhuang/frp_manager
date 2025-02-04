@@ -441,7 +441,6 @@ remove_panel() {
     fi
 
     # 删除面板目录
-    echo -e "${GREEN}4. 删除面板文件...${NC}"
     rm -rf /usr/local/frp-panel
 
     echo -e "${GREEN}Web管理面板已完全删除！${NC}"
@@ -450,8 +449,8 @@ remove_panel() {
     fi
 }
 
-# 检查Web面板更新
-check_panel_update() {
+# 检查并更新Web面板
+check_and_update_panel() {
     check_root
     
     if [ ! -d "/usr/local/frp-panel" ]; then
@@ -473,78 +472,56 @@ check_panel_update() {
         return 1
     fi
 
-    # 比较版本
-    CURRENT_VERSION=$(cat /usr/local/frp-panel/version.txt 2>/dev/null || echo "0.0.0")
-    NEW_VERSION=$(cat frp_manager/frp_panel/version.txt 2>/dev/null || echo "0.0.0")
+    # 获取当前安装目录和仓库的最后修改时间
+    CURRENT_TIME=$(stat -c %Y /usr/local/frp-panel 2>/dev/null || echo "0")
+    NEW_TIME=$(cd frp_manager && git log -1 --format=%ct 2>/dev/null || echo "0")
 
-    if [ "$CURRENT_VERSION" = "$NEW_VERSION" ]; then
-        echo -e "${GREEN}当前已是最新版本 ${CURRENT_VERSION}${NC}"
-        rm -rf $TMP_DIR
-        return 0
+    if [ "$NEW_TIME" -gt "$CURRENT_TIME" ]; then
+        echo -e "${YELLOW}发现新版本${NC}"
+        echo -e "当前版本日期: $(date -d @$CURRENT_TIME '+%Y-%m-%d %H:%M:%S')"
+        echo -e "最新版本日期: $(date -d @$NEW_TIME '+%Y-%m-%d %H:%M:%S')"
+        
+        read -p "是否现在更新？(y/n): " confirm
+        if [ "$confirm" = "y" ]; then
+            # 备份当前配置
+            if [ -f "/usr/local/frp-panel/.env" ]; then
+                cp "/usr/local/frp-panel/.env" "/tmp/frp-panel.env.backup"
+            fi
+
+            # 停止服务
+            systemctl stop frp-panel
+
+            # 更新文件
+            cp -r frp_manager/frp_panel/* /usr/local/frp-panel/
+
+            # 恢复配置文件
+            if [ -f "/tmp/frp-panel.env.backup" ]; then
+                mv "/tmp/frp-panel.env.backup" "/usr/local/frp-panel/.env"
+            fi
+
+            # 更新依赖
+            cd /usr/local/frp-panel
+            npm install --production
+
+            # 确保Chart.js正确安装
+            if [ ! -f "node_modules/chart.js/dist/chart.umd.js" ]; then
+                echo -e "${GREEN}安装Chart.js...${NC}"
+                npm install chart.js@latest
+            fi
+
+            # 重启服务
+            systemctl restart frp-panel
+
+            echo -e "${GREEN}Web面板更新完成！${NC}"
+        else
+            echo -e "${YELLOW}已取消更新${NC}"
+        fi
     else
-        echo -e "${YELLOW}发现新版本: ${NEW_VERSION}${NC}"
-        echo -e "当前版本: ${CURRENT_VERSION}"
-        rm -rf $TMP_DIR
-        return 2
-    fi
-}
-
-# 更新Web面板
-update_panel() {
-    check_root
-
-    if [ ! -d "/usr/local/frp-panel" ]; then
-        echo -e "${RED}错误: Web面板未安装${NC}"
-        return 1
-    fi
-
-    echo -e "${GREEN}开始更新Web面板...${NC}"
-
-    # 创建临时目录
-    TMP_DIR=$(mktemp -d)
-    cd $TMP_DIR
-
-    # 克隆最新代码
-    git clone --depth 1 https://github.com/cuijianzhuang/frp_manager.git
-    if [ $? -ne 0 ]; then
-        echo -e "${RED}下载更新失败${NC}"
-        rm -rf $TMP_DIR
-        return 1
-    fi
-
-    # 备份当前配置
-    if [ -f "/usr/local/frp-panel/.env" ]; then
-        cp "/usr/local/frp-panel/.env" "/tmp/frp-panel.env.backup"
-    fi
-
-    # 停止服务
-    systemctl stop frp-panel
-
-    # 更新文件
-    cp -r frp_manager/frp_panel/* /usr/local/frp-panel/
-
-    # 恢复配置文件
-    if [ -f "/tmp/frp-panel.env.backup" ]; then
-        mv "/tmp/frp-panel.env.backup" "/usr/local/frp-panel/.env"
-    fi
-
-    # 更新依赖
-    cd /usr/local/frp-panel
-    npm install --production
-
-    # 确保Chart.js正确安装
-    if [ ! -f "node_modules/chart.js/dist/chart.umd.js" ]; then
-        echo -e "${GREEN}安装Chart.js...${NC}"
-        npm install chart.js@latest
+        echo -e "${GREEN}当前已是最新版本${NC}"
     fi
 
     # 清理临时文件
     rm -rf $TMP_DIR
-
-    # 重启服务
-    systemctl restart frp-panel
-
-    echo -e "${GREEN}Web面板更新完成！${NC}"
 }
 
 # 主菜单
@@ -566,8 +543,7 @@ show_menu() {
     echo "11. 更新FRP"
     echo "12. 安装Web管理面板"
     echo "13. 删除Web管理面板"
-    echo "14. 检查面板更新"
-    echo "15. 更新Web面板"
+    echo "14. 检查并更新Web面板"
     echo "0. 退出"
     echo "============================"
 }
@@ -576,7 +552,7 @@ show_menu() {
 main() {
     while true; do
         show_menu
-        read -p "请输入选项 [0-15]: " choice
+        read -p "请输入选项 [0-14]: " choice
 
         case $choice in
             1) install_frp ;;
@@ -592,8 +568,7 @@ main() {
             11) update_frp ;;
             12) install_panel_deps ;;
             13) remove_panel ;;
-            14) check_panel_update ;;
-            15) update_panel ;;
+            14) check_and_update_panel ;;
             0) exit 0 ;;
             *) echo -e "${RED}无效的选项${NC}" ;;
         esac
