@@ -147,6 +147,12 @@ PORT=3000
 4. 恢复原有配置
 5. 自动重启服务
 
+### Web面板更新
+1. 基于Git仓库检查更新
+2. 自动备份配置文件
+3. 更新面板程序
+4. 更新依赖包
+5. 恢复配置并重启
 
 ## 安全建议
 
@@ -174,53 +180,32 @@ PORT=3000
    - 查看系统日志：`journalctl -u frps`
 
 2. Web面板问题：
-   - 检查Node.js安装
-   - 确认3000端口可用
-   - 查看面板日志：`journalctl -u frp-panel`
+   - 检查面板日志：`journalctl -u frp-panel`
+   - 确认Node.js安装正确
+   - 验证配置文件权限
 
 3. 更新失败：
    - 检查网络连接
-   - 确认GitHub可访问
-   - 查看错误日志
-
-## 卸载说明
-
-### 卸载FRP
-```bash
-# 使用脚本菜单选项7
-# 或手动执行：
-systemctl stop frps
-systemctl disable frps
-rm -f /etc/systemd/system/frps.service
-rm -rf /usr/local/frp
-```
-
-### 卸载Web面板
-```bash
-# 使用脚本菜单选项15
-# 或手动执行：
-systemctl stop frp-panel
-systemctl disable frp-panel
-rm -f /etc/systemd/system/frp-panel.service
-rm -rf /usr/local/frp-panel
-```
+   - 确认Git是否正确安装
+   - 查看临时文件是否清理
 
 ## 版本历史
 
+### v2.0.0
+- 添加系统监控功能
+- 集成Chart.js图表显示
+- 优化更新机制
+- 改进用户界面
+
 ### v1.0.0
 - 初始版本发布
-- 基本功能实现
-- Web管理面板支持
+- 基本的FRP管理功能
+- Web管理界面
+- 配置文件编辑器
 
 ## 贡献指南
 
-欢迎提交Issue和Pull Request！
-
-1. Fork本仓库
-2. 创建特性分支
-3. 提交更改
-4. 推送到分支
-5. 创建Pull Request
+欢迎提交Issue和Pull Request来帮助改进项目。
 
 ## 许可证
 
