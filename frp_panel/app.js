@@ -1,7 +1,7 @@
 const express = require('express');
 const bodyParser = require('body-parser');
 const fs = require('fs');
-const ini = require('ini');
+const TOML = require('@iarna/toml');
 const { exec } = require('child_process');
 const path = require('path');
 const basicAuth = require('express-basic-auth');
@@ -102,12 +102,12 @@ app.post('/api/admin/password', (req, res) => {
 });
 
 // 配置文件路径
-const CONFIG_PATH = '/usr/local/frp/frps.ini';
+const CONFIG_PATH = '/usr/local/frp/frps.toml';
 
 // 获取FRP配置
 app.get('/api/config', (req, res) => {
     try {
-        const config = ini.parse(fs.readFileSync(CONFIG_PATH, 'utf-8'));
+        const config = TOML.parse(fs.readFileSync(CONFIG_PATH, 'utf-8'));
         res.json(config);
     } catch (error) {
         res.status(500).json({ error: '读取配置失败' });
@@ -122,7 +122,7 @@ app.post('/api/config', (req, res) => {
         const backupPath = `${CONFIG_PATH}.backup-${Date.now()}`;
         fs.copyFileSync(CONFIG_PATH, backupPath);
         
-        fs.writeFileSync(CONFIG_PATH, ini.stringify(config));
+        fs.writeFileSync(CONFIG_PATH, TOML.stringify(config));
         
         // 重启FRP服务
         exec('systemctl restart frps', (error) => {

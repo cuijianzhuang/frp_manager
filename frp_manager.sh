@@ -69,7 +69,7 @@ After=network.target
 
 [Service]
 Type=simple
-ExecStart=$INSTALL_DIR/frps -c $INSTALL_DIR/frps.ini
+ExecStart=$INSTALL_DIR/frps -c $INSTALL_DIR/frps.toml
 Restart=always
 RestartSec=5
 
@@ -96,17 +96,42 @@ configure_frp() {
         return
     fi
 
-    # 创建基本配置文件
-    cat > $INSTALL_DIR/frps.ini << EOF
-[common]
-bind_port = 7000
-dashboard_port = 7500
-dashboard_user = admin
-dashboard_pwd = admin
-token = 12345678
-EOF
+    # 如果存在旧的ini配置文件，询问是否转换
+    if [ -f "$INSTALL_DIR/frps.ini" ]; then
+        echo -e "${YELLOW}检测到旧的INI格式配置文件${NC}"
+        read -p "是否要将其转换为TOML格式？(y/n): " convert_confirm
+        if [ "$convert_confirm" = "y" ]; then
+            convert_ini_to_toml "$INSTALL_DIR/frps.ini" "$INSTALL_DIR/frps.toml"
+        else
+            # 创建新的TOML配置文件
+            cat > $INSTALL_DIR/frps.toml << EOF
+bindPort = 7000
+auth.token = "12345678"
 
-    echo -e "${GREEN}已创建基本配置文件，请根据需要修改 $INSTALL_DIR/frps.ini${NC}"
+webServer.port = 7500
+webServer.user = "admin"
+webServer.password = "admin"
+EOF
+            mv "$INSTALL_DIR/frps.ini" "$INSTALL_DIR/frps.ini.bak"
+            echo -e "${YELLOW}已将旧的INI配置文件备份为 $INSTALL_DIR/frps.ini.bak${NC}"
+        fi
+    else
+        # 创建新的TOML配置文件
+        cat > $INSTALL_DIR/frps.toml << EOF
+bindPort = 7000
+auth.token = "12345678"
+
+webServer.port = 7500
+webServer.user = "admin"
+webServer.password = "admin"
+EOF
+    fi
+
+    # 更新服务文件中的配置文件路径
+    sed -i 's/frps.ini/frps.toml/g' $SERVICE_FILE
+
+    echo -e "${GREEN}已创建基本配置文件，请根据需要修改 $INSTALL_DIR/frps.toml${NC}"
+    echo -e "${YELLOW}注意：FRP现在使用TOML格式的配置文件${NC}"
 }
 
 # 启动FRP
@@ -215,8 +240,8 @@ check_and_update_frp() {
             echo -e "${GREEN}开始更新FRP...${NC}"
 
             # 备份配置文件
-            if [ -f "$INSTALL_DIR/frps.ini" ]; then
-                cp "$INSTALL_DIR/frps.ini" "/tmp/frps.ini.backup"
+            if [ -f "$INSTALL_DIR/frps.toml" ]; then
+                cp "$INSTALL_DIR/frps.toml" "/tmp/frps.toml.backup"
             fi
 
             # 停止服务
@@ -241,8 +266,8 @@ check_and_update_frp() {
             cp -r * $INSTALL_DIR/
 
             # 恢复配置文件
-            if [ -f "/tmp/frps.ini.backup" ]; then
-                mv "/tmp/frps.ini.backup" "$INSTALL_DIR/frps.ini"
+            if [ -f "/tmp/frps.toml.backup" ]; then
+                mv "/tmp/frps.toml.backup" "$INSTALL_DIR/frps.toml"
             fi
 
             # 清理临时文件

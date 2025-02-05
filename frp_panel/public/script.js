@@ -4,11 +4,11 @@ async function loadConfig() {
         const response = await fetch('/api/config');
         const config = await response.json();
         
-        document.getElementById('bindPort').value = config.common.bind_port;
-        document.getElementById('dashboardPort').value = config.common.dashboard_port;
-        document.getElementById('dashboardUser').value = config.common.dashboard_user;
-        document.getElementById('dashboardPwd').value = config.common.dashboard_pwd;
-        document.getElementById('token').value = config.common.token;
+        document.getElementById('bindPort').value = config.bindPort || '';
+        document.getElementById('dashboardPort').value = config.webServer?.port || '';
+        document.getElementById('dashboardUser').value = config.webServer?.user || '';
+        document.getElementById('dashboardPwd').value = config.webServer?.password || '';
+        document.getElementById('token').value = config.auth?.token || '';
     } catch (error) {
         alert('加载配置失败');
     }
@@ -19,12 +19,14 @@ async function saveConfig(event) {
     event.preventDefault();
     
     const config = {
-        common: {
-            bind_port: document.getElementById('bindPort').value,
-            dashboard_port: document.getElementById('dashboardPort').value,
-            dashboard_user: document.getElementById('dashboardUser').value,
-            dashboard_pwd: document.getElementById('dashboardPwd').value,
+        bindPort: parseInt(document.getElementById('bindPort').value),
+        auth: {
             token: document.getElementById('token').value
+        },
+        webServer: {
+            port: parseInt(document.getElementById('dashboardPort').value),
+            user: document.getElementById('dashboardUser').value,
+            password: document.getElementById('dashboardPwd').value
         }
     };
 

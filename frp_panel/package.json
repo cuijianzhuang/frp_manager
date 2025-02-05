@@ -4,6 +4,7 @@
   "description": "FRP Web Management Panel",
   "main": "app.js",
   "dependencies": {
+    "@iarna/toml": "^2.2.5",
     "express": "^4.17.1",
     "body-parser": "^1.19.0",
     "ini": "^2.0.0",
